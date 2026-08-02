@@ -24,6 +24,11 @@ export default function IdeaCard({ idea, hasVoted, onVote }) {
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500">
             {idea.category}
           </span>
+          {idea.product && (
+            <span className="rounded-full bg-indigo-50 px-2 py-0.5 text-xs text-indigo-600">
+              {idea.product}
+            </span>
+          )}
         </div>
         {idea.description && <p className="mt-1 text-sm text-slate-600">{idea.description}</p>}
         {idea.submitterName && (

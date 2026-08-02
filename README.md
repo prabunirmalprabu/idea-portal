@@ -1,8 +1,8 @@
 # Idea Portal
 
 A working idea-management and roadmap portal, in the spirit of Aha!'s Ideas
-portal: customers submit and vote on ideas, and you triage them onto a public
-Now / Next / Later roadmap. It is **not** a licensed copy of Aha! — it's a
+portal: customers submit and vote on ideas, and you triage them onto a public,
+quarter-by-quarter roadmap. It is **not** a licensed copy of Aha! — it's a
 purpose-built app that covers the same core workflow: capture, vote, triage,
 publish.
 
@@ -14,11 +14,21 @@ in Smartsheet too, and vice versa.
 
 - **`/ideas`** — public board. Anyone with the link can submit an idea and
   upvote existing ones (one vote per browser, enforced client-side).
-- **`/roadmap`** — public Now / Next / Later view of whatever you've marked
-  as planned.
-- **`/admin`** — password-gated page for you and your team: triage incoming
-  ideas (change status/timeframe/category) and add roadmap items directly,
-  without going through the public form.
+- **`/roadmap`** — public, graphical roadmap: a column per release quarter
+  (e.g. Q3 2026, Q4 2026...), each showing the items planned for it, with a
+  status-colored bar and a bar chart across the top showing relative volume
+  per quarter. Items marked "Shipped" show their release notes right on the
+  card.
+- **`/admin`** — password-gated page for you and your team:
+  - Triage incoming ideas: change status, release quarter, category, product,
+    and add release notes, all inline.
+  - Add roadmap items directly, without going through the public form.
+  - **Manage field options** — add new Status, Release Quarter, Category, or
+    Product values yourself, any time, without touching code. New quarters
+    (e.g. "Q2 2028" once you're that far out) or new products just get typed
+    in and are immediately available everywhere.
+  - **Import from Excel** — upload an .xlsx file to bulk-create roadmap items
+    instead of adding them one at a time.
 
 ## The Smartsheet sheet
 
@@ -28,10 +38,17 @@ https://app.smartsheet.com/sheets/95Jq78pWhVghjF2RRrR77hq65GPPgfvJ9pmxgG81
 
 Columns: Idea, Description, Submitter Name, Submitter Email, Votes, Status
 (New / Under Review / Planned / In Progress / Shipped / Not Planned),
-Timeframe (Backlog / Now / Next / Later), Category (Feature / Improvement /
-Integration / Bug / Other), Source (Customer / Internal). Each row's
+Release Quarter (Backlog / Q3 2026 / Q4 2026 / Q1 2027 / Q2 2027 / Q3 2027 /
+Q4 2027 / Q1 2028), Category (Feature / Improvement / Integration / Bug /
+Other), Source (Customer / Internal), Product (General, to start), Release
+Notes (free text, shown publicly once an item is Shipped). Each row's
 Smartsheet-native "created" timestamp is used as the submission date, so
 there's no separate date column to manage.
+
+Status, Release Quarter, Category, and Product are all just Smartsheet
+dropdown columns under the hood — the "Manage field options" panel in
+`/admin` adds new values to these same dropdowns via the Smartsheet API, so
+they show up whether you look in the app or open the sheet directly.
 
 You can open the sheet any time in Smartsheet to browse, filter, or edit
 ideas by hand — the app and Smartsheet stay in sync since they read/write the
@@ -123,3 +140,10 @@ variables set.
   app makes (new ideas, votes, triage updates) will show up as made by
   whoever generated the token, not by the actual customer submitting the
   idea — Smartsheet's API has no concept of an anonymous public writer.
+- **Excel import size.** Serverless hosts like Vercel cap request body size
+  (roughly 4.5MB on Vercel's free tier) — plenty for a spreadsheet of ideas,
+  but very large workbooks (many thousands of rows or embedded images) could
+  hit that ceiling. The importer reads the first sheet of the workbook only.
+- **The release quarter list has a fixed initial window** (through Q1 2028).
+  Once you get close to running out, add more via "Manage field options" in
+  `/admin` — takes a few seconds, no redeploy needed.

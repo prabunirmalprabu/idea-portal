@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import IdeaCard from "@/components/IdeaCard";
 import SubmitIdeaForm from "@/components/SubmitIdeaForm";
 
-const categories = ["All", "Feature", "Improvement", "Integration", "Bug", "Other"];
 const VOTED_KEY = "idea-portal-voted-ids";
 
 function getVotedIds() {
@@ -15,10 +14,11 @@ function getVotedIds() {
   }
 }
 
-export default function IdeasBoard({ initialIdeas }) {
+export default function IdeasBoard({ initialIdeas, categories = [], products = [] }) {
   const [ideas, setIdeas] = useState(initialIdeas);
   const [category, setCategory] = useState("All");
   const [votedIds, setVotedIds] = useState([]);
+  const categoryOptions = ["All", ...categories];
 
   useEffect(() => {
     setVotedIds(getVotedIds());
@@ -64,11 +64,11 @@ export default function IdeasBoard({ initialIdeas }) {
           <h1 className="text-2xl font-semibold">Ideas</h1>
           <p className="text-sm text-slate-500">Vote on ideas or submit your own.</p>
         </div>
-        <SubmitIdeaForm onSubmit={handleSubmit} />
+        <SubmitIdeaForm onSubmit={handleSubmit} categories={categories} products={products} />
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {categories.map((c) => (
+        {categoryOptions.map((c) => (
           <button
             key={c}
             onClick={() => setCategory(c)}

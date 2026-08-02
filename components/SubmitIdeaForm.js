@@ -1,16 +1,15 @@
 "use client";
 import { useState } from "react";
 
-const categories = ["Feature", "Improvement", "Integration", "Bug", "Other"];
-
-export default function SubmitIdeaForm({ onSubmit }) {
+export default function SubmitIdeaForm({ onSubmit, categories = [], products = [] }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     title: "",
     description: "",
     submitterName: "",
     submitterEmail: "",
-    category: "Feature",
+    category: categories[0] || "",
+    product: products[0] || "",
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -30,7 +29,8 @@ export default function SubmitIdeaForm({ onSubmit }) {
         description: "",
         submitterName: "",
         submitterEmail: "",
-        category: "Feature",
+        category: categories[0] || "",
+        product: products[0] || "",
       });
       setOpen(false);
     } catch (err) {
@@ -91,19 +91,37 @@ export default function SubmitIdeaForm({ onSubmit }) {
           />
         </div>
       </div>
-      <div>
-        <label className="block text-sm font-medium text-slate-700">Category</label>
-        <select
-          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          value={form.category}
-          onChange={(e) => setForm({ ...form, category: e.target.value })}
-        >
-          {categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Category</label>
+          <select
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            value={form.category}
+            onChange={(e) => setForm({ ...form, category: e.target.value })}
+          >
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        </div>
+        {products.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Product</label>
+            <select
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={form.product}
+              onChange={(e) => setForm({ ...form, product: e.target.value })}
+            >
+              {products.map((p) => (
+                <option key={p} value={p}>
+                  {p}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       <div className="flex gap-2">
