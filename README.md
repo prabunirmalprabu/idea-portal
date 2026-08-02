@@ -14,7 +14,8 @@ in Smartsheet too, and vice versa.
 
 - **`/ideas`** — public board. Anyone with the link can submit an idea and
   upvote existing ones (one vote per browser, enforced client-side).
-- **`/roadmap`** — public, graphical roadmap: a column per release quarter
+- **`/roadmap`** — public, graphical roadmap with a Product filter (chips
+  above the grid) and a column per release quarter
   (e.g. Q3 2026, Q4 2026...), each showing the items planned for it, with a
   status-colored bar and a bar chart across the top showing relative volume
   per quarter. Items marked "Shipped" show their release notes right on the
@@ -32,12 +33,14 @@ in Smartsheet too, and vice versa.
     instead of adding them one at a time.
   - **Delete** any idea or roadmap item, with a confirmation prompt.
   - **Timeline (`/admin/timeline`)** — its own dedicated page (reachable via
-    the "Open Timeline" button in Admin) with a draggable, resizable Gantt
-    chart grouped into a swim-lane per Product. Filter by Product and/or
-    Status using the chip toggles above the chart. Dragging a bar
-    reschedules it and saves automatically to Smartsheet. This interactive
-    view is admin-only by design (see Limitations) — the public `/roadmap`
-    stays a read-only quarter board.
+    the "Open Timeline" button in Admin) listing every roadmap item as a
+    sortable table, ordered by start date (falling back to the start of its
+    Release Quarter if no explicit date is set). Filter by Product and/or
+    Status using the chip toggles above the table. Status, Start Date, and
+    Target Date are all editable right in the table and save automatically
+    to Smartsheet, and each row shows a simple progress bar derived from
+    Status. This view is admin-only by design (see Limitations) — the public
+    `/roadmap` stays a read-only quarter board.
 
 ## The Smartsheet sheet
 
@@ -156,15 +159,17 @@ variables set.
 - **The release quarter list has a fixed initial window** (through Q1 2028).
   Once you get close to running out, add more via "Manage field options" in
   `/admin` — takes a few seconds, no redeploy needed.
-- **The Gantt timeline is admin-only, on purpose.** `/roadmap` is public —
-  letting anyone drag bars around would let any visitor reschedule your
-  roadmap. The editable Gantt only lives behind the `/admin` password.
-- **Items without a Start/Target Date fall back to their whole Release
-  Quarter** as a default bar span on the timeline, so nothing you've already
-  entered disappears — set explicit dates (via the table or by dragging)
-  whenever you want a tighter, more accurate bar.
-- **Progress % on Gantt bars is derived from Status**, not tracked
+- **The Timeline is admin-only, on purpose.** `/roadmap` is public — letting
+  anyone edit dates or status would let any visitor reschedule your roadmap.
+  The editable Timeline table only lives behind the `/admin` password.
+- **Items without a Start Date sort by their Release Quarter's start
+  instead**, so nothing you've already entered disappears from the
+  Timeline — set an explicit Start Date whenever you want tighter ordering.
+- **Progress % in the Timeline is derived from Status**, not tracked
   separately (New/Planned=0%, In Progress=60%, Shipped=100%, etc.).
-- **No native "Quarter" zoom level.** The Gantt library only offers
-  Month/Year granularity, not a true quarter view — Month is the default and
-  closest fit, given items are already scheduled by Release Quarter.
+- **The Timeline is a table, not a Gantt chart** — after repeated attempts to
+  make a drag-and-drop Gantt chart fit any screen without a scrollbar or
+  cramped columns, it was replaced with a filterable, sortable table. You
+  lose the drag-to-reschedule interaction, but every row is always fully
+  visible and readable regardless of how many items or how wide a date
+  range you have; dates and status are still editable inline.

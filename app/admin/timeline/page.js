@@ -1,24 +1,27 @@
 "use client";
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import AdminGate from "@/components/AdminGate";
-
-const AdminGantt = dynamic(() => import("@/components/AdminGantt"), {
-  ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Loading timeline…</p>,
-});
+import TimelineTable from "@/components/TimelineTable";
 
 function TimelineContent() {
   const [ideas, setIdeas] = useState([]);
+  const [fields, setFields] = useState({});
   const [loading, setLoading] = useState(true);
 
   async function load() {
     setLoading(true);
-    const res = await fetch("/api/admin/ideas");
-    if (res.ok) {
-      const data = await res.json();
+    const [ideasRes, fieldsRes] = await Promise.all([
+      fetch("/api/admin/ideas"),
+      fetch("/api/admin/fields"),
+    ]);
+    if (ideasRes.ok) {
+      const data = await ideasRes.json();
       setIdeas(data.ideas || []);
+    }
+    if (fieldsRes.ok) {
+      const data = await fieldsRes.json();
+      setFields(data.fields || {});
     }
     setLoading(false);
   }
@@ -27,12 +30,12 @@ function TimelineContent() {
     load();
   }, []);
 
-  async function handleDateChange(id, dates) {
-    setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, ...dates } : i)));
+  async function handleUpdate(id, updates) {
+    setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } : i)));
     await fetch(`/api/admin/ideas/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(dates),
+      body: JSON.stringify(updates),
     });
   }
 
@@ -42,7 +45,8 @@ function TimelineContent() {
         <div>
           <h1 className="text-2xl font-semibold">Timeline</h1>
           <p className="text-sm text-slate-500">
-            Drag to reschedule, resize to change duration. Admin-only — never shown publicly.
+            Sorted by start date. Filter by Product or Status, and edit dates or status inline.
+            Admin-only — never shown publicly.
           </p>
         </div>
         <Link href="/admin" className="text-sm font-medium text-brand-600 hover:text-brand-700">
@@ -52,7 +56,7 @@ function TimelineContent() {
       {loading ? (
         <p className="text-sm text-slate-500">Loading…</p>
       ) : (
-        <AdminGantt ideas={ideas} onDateChange={handleDateChange} />
+        <TimelineTable ideas={ideas} fields={fields} onUpdate={handleUpdate} />
       )}
     </div>
   );
