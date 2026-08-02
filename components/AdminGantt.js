@@ -50,39 +50,76 @@ function resolveRange(idea) {
   return { start: today, end: new Date(today.getTime() + 14 * 24 * 60 * 60 * 1000) };
 }
 
-export default function AdminGantt({ ideas, onDateChange }) {
-  const products = useMemo(() => {
-    const set = new Set(ideas.map((i) => i.product || "General"));
-    return Array.from(set);
-  }, [ideas]);
+// Generic "chip filter" state helper: tracks a set of selected values for a
+// list that can change over time (falls back to "everything selected" once
+// the selection would otherwise go empty, e.g. right after the value list
+// changes).
+function useChipFilter(values) {
+  const [selected, setSelected] = useState(() => new Set(values));
 
-  const [selected, setSelected] = useState(() => new Set(products));
-  const [viewMode, setViewMode] = useState(ViewMode.Month);
-  const [saveError, setSaveError] = useState("");
-
-  // Keep selection in sync if the product list changes (new product added,
-  // items deleted, etc.) without clobbering the user's existing choices.
-  const activeSelected = useMemo(() => {
+  const active = useMemo(() => {
     const next = new Set();
-    for (const p of products) {
-      if (selected.has(p)) next.add(p);
+    for (const v of values) {
+      if (selected.has(v)) next.add(v);
     }
-    return next.size > 0 ? next : new Set(products);
-  }, [products, selected]);
+    return next.size > 0 ? next : new Set(values);
+  }, [values, selected]);
 
-  function toggleProduct(p) {
+  function toggle(v) {
     setSelected((prev) => {
-      const next = new Set(prev.size > 0 ? prev : products);
-      if (next.has(p)) {
-        next.delete(p);
+      const next = new Set(prev.size > 0 ? prev : values);
+      if (next.has(v)) {
+        next.delete(v);
       } else {
-        next.add(p);
+        next.add(v);
       }
       return next;
     });
   }
 
-  const filteredIdeas = ideas.filter((i) => activeSelected.has(i.product || "General"));
+  return [active, toggle];
+}
+
+function ChipRow({ label, values, active, onToggle }) {
+  if (values.length === 0) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</span>
+      {values.map((v) => (
+        <button
+          key={v}
+          onClick={() => onToggle(v)}
+          className={`rounded-full border px-3 py-1 text-xs font-medium ${
+            active.has(v) ? "border-brand-500 bg-brand-50 text-brand-700" : "border-slate-200 text-slate-400"
+          }`}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+export default function AdminGantt({ ideas, onDateChange }) {
+  const products = useMemo(() => {
+    const set = new Set(ideas.map((i) => i.product || "General"));
+    return Array.from(set);
+  }, [ideas]);
+  const statuses = useMemo(() => {
+    const set = new Set(ideas.map((i) => i.status || "New"));
+    return Array.from(set);
+  }, [ideas]);
+
+  const [activeProducts, toggleProduct] = useChipFilter(products);
+  const [activeStatuses, toggleStatus] = useChipFilter(statuses);
+  // Note: no native "quarter" granularity exists in this library — Month is
+  // the closest fit, so that's the default instead of Week.
+  const [viewMode, setViewMode] = useState(ViewMode.Month);
+  const [saveError, setSaveError] = useState("");
+
+  const filteredIdeas = ideas.filter(
+    (i) => activeProducts.has(i.product || "General") && activeStatuses.has(i.status || "New")
+  );
 
   const tasks = useMemo(() => {
     const byProduct = {};
@@ -144,53 +181,39 @@ export default function AdminGantt({ ideas, onDateChange }) {
     }
   }
 
-  if (tasks.length === 0) {
-    return (
-      <p className="text-sm text-slate-500">
-        Nothing scheduled yet — items need a Release Quarter (or Start/Target Date) other than
-        Backlog to show up here.
-      </p>
-    );
-  }
-
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-2">
-          {products.map((p) => (
-            <button
-              key={p}
-              onClick={() => toggleProduct(p)}
-              className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                activeSelected.has(p)
-                  ? "border-brand-500 bg-brand-50 text-brand-700"
-                  : "border-slate-200 text-slate-400"
-              }`}
-            >
-              {p}
-            </button>
-          ))}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-2">
+          <ChipRow label="Product" values={products} active={activeProducts} onToggle={toggleProduct} />
+          <ChipRow label="Status" values={statuses} active={activeStatuses} onToggle={toggleStatus} />
         </div>
         <select
           className="rounded-md border border-slate-300 px-2 py-1 text-xs"
           value={viewMode}
           onChange={(e) => setViewMode(e.target.value)}
         >
-          <option value={ViewMode.Week}>Week</option>
           <option value={ViewMode.Month}>Month</option>
           <option value={ViewMode.Year}>Year</option>
         </select>
       </div>
       {saveError && <p className="text-sm text-red-600">{saveError}</p>}
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-        <Gantt
-          tasks={tasks}
-          viewMode={viewMode}
-          onDateChange={handleDateChange}
-          listCellWidth="180px"
-          columnWidth={viewMode === ViewMode.Month ? 220 : 65}
-        />
-      </div>
+      {tasks.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          Nothing matches the current filters. Items also need a Release Quarter (or Start/Target
+          Date) other than Backlog to show up here at all.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <Gantt
+            tasks={tasks}
+            viewMode={viewMode}
+            onDateChange={handleDateChange}
+            listCellWidth="180px"
+            columnWidth={viewMode === ViewMode.Year ? 350 : 220}
+          />
+        </div>
+      )}
       <p className="text-xs text-slate-400">
         Drag a bar to reschedule it, or drag its edges to resize — changes save automatically to
         Smartsheet. This view is only ever shown here in Admin, never on the public roadmap.

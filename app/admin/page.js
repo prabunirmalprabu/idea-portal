@@ -1,11 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
-
-const AdminGantt = dynamic(() => import("@/components/AdminGantt"), {
-  ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Loading timeline…</p>,
-});
+import Link from "next/link";
+import AdminGate from "@/components/AdminGate";
 
 const FIELD_LABELS = {
   status: "Status",
@@ -61,10 +57,7 @@ function AddOptionRow({ field, options, onAdd }) {
   );
 }
 
-export default function AdminPage() {
-  const [authed, setAuthed] = useState(null);
-  const [password, setPassword] = useState("");
-  const [loginError, setLoginError] = useState("");
+function AdminContent() {
   const [ideas, setIdeas] = useState([]);
   const [fields, setFields] = useState({ status: [], timeframe: [], category: [], product: [] });
   const [newItem, setNewItem] = useState({
@@ -81,17 +74,12 @@ export default function AdminPage() {
   const [importFile, setImportFile] = useState(null);
   const [importMessage, setImportMessage] = useState("");
   const [importing, setImporting] = useState(false);
-  const [view, setView] = useState("table");
 
   async function loadAll() {
     const res = await fetch("/api/admin/ideas");
-    if (res.status === 401) {
-      setAuthed(false);
-      return;
-    }
+    if (!res.ok) return;
     const data = await res.json();
     setIdeas(data.ideas || []);
-    setAuthed(true);
 
     const fieldsRes = await fetch("/api/admin/fields");
     if (fieldsRes.ok) {
@@ -110,23 +98,6 @@ export default function AdminPage() {
   useEffect(() => {
     loadAll();
   }, []);
-
-  async function handleLogin(e) {
-    e.preventDefault();
-    setLoginError("");
-    const res = await fetch("/api/admin/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setLoginError(data.error || "Login failed");
-      return;
-    }
-    setPassword("");
-    loadAll();
-  }
 
   async function handleUpdate(id, fieldUpdates) {
     setIdeas((prev) => prev.map((i) => (i.id === id ? { ...i, ...fieldUpdates } : i)));
@@ -203,49 +174,29 @@ export default function AdminPage() {
     }
   }
 
-  if (authed === null) {
-    return <p className="text-sm text-slate-500">Checking session…</p>;
-  }
-
-  if (!authed) {
-    return (
-      <div className="mx-auto max-w-sm">
-        <h1 className="mb-4 text-xl font-semibold">Admin login</h1>
-        <form onSubmit={handleLogin} className="space-y-3">
-          <input
-            type="password"
-            placeholder="Admin password"
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {loginError && <p className="text-sm text-red-600">{loginError}</p>}
-          <button
-            type="submit"
-            className="w-full rounded-md bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-          >
-            Log in
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-semibold">Admin: roadmap &amp; triage</h1>
-        <p className="text-sm text-slate-500">
-          Capture roadmap items directly, triage customer ideas, or bulk-import from Excel.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-2xl font-semibold">Admin: roadmap &amp; triage</h1>
+          <p className="text-sm text-slate-500">
+            Capture roadmap items directly, triage customer ideas, or bulk-import from Excel.
+          </p>
+        </div>
+        <Link
+          href="/admin/timeline"
+          className="rounded-md bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
+        >
+          Open Timeline &rarr;
+        </Link>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <h2 className="font-medium">Import from Excel</h2>
         <p className="mt-1 text-xs text-slate-500">
           Upload an .xlsx file with a column named "Idea" or "Title" (required), plus optional
-          columns: Description, Status, Release Quarter, Category, Product, Release Notes. Each row
-          becomes a roadmap item.
+          columns: Description, Status, Release Quarter, Category, Product, Release Notes, Start
+          Date, Target Date. Each row becomes a roadmap item.
         </p>
         <form onSubmit={handleImport} className="mt-3 flex flex-wrap items-center gap-3">
           <a
@@ -374,150 +325,133 @@ export default function AdminPage() {
         </button>
       </form>
 
-      <div className="flex gap-2">
-        <button
-          onClick={() => setView("table")}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            view === "table" ? "bg-slate-800 text-white" : "border border-slate-200 text-slate-600"
-          }`}
-        >
-          Table
-        </button>
-        <button
-          onClick={() => setView("timeline")}
-          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
-            view === "timeline" ? "bg-slate-800 text-white" : "border border-slate-200 text-slate-600"
-          }`}
-        >
-          Timeline
-        </button>
-      </div>
-
-      {view === "timeline" ? (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <AdminGantt ideas={ideas} onDateChange={(id, dates) => handleUpdate(id, dates)} />
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
-              <tr>
-                <th className="px-3 py-2">Idea</th>
-                <th className="px-3 py-2">Source</th>
-                <th className="px-3 py-2">Votes</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-3 py-2">Release Quarter</th>
-                <th className="px-3 py-2">Category</th>
-                <th className="px-3 py-2">Product</th>
-                <th className="px-3 py-2">Start</th>
-                <th className="px-3 py-2">Target</th>
-                <th className="px-3 py-2">Release Notes</th>
-                <th className="px-3 py-2"></th>
+      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="px-3 py-2">Idea</th>
+              <th className="px-3 py-2">Source</th>
+              <th className="px-3 py-2">Votes</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Release Quarter</th>
+              <th className="px-3 py-2">Category</th>
+              <th className="px-3 py-2">Product</th>
+              <th className="px-3 py-2">Start</th>
+              <th className="px-3 py-2">Target</th>
+              <th className="px-3 py-2">Release Notes</th>
+              <th className="px-3 py-2"></th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {ideas.map((idea) => (
+              <tr key={idea.id}>
+                <td className="px-3 py-2 align-top">
+                  <div className="font-medium text-slate-900">{idea.title}</div>
+                  {idea.submitterName && <div className="text-xs text-slate-400">{idea.submitterName}</div>}
+                </td>
+                <td className="px-3 py-2 align-top">{idea.source}</td>
+                <td className="px-3 py-2 align-top">{idea.votes}</td>
+                <td className="px-3 py-2 align-top">
+                  <select
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    value={idea.status}
+                    onChange={(e) => handleUpdate(idea.id, { status: e.target.value })}
+                  >
+                    {fields.status?.map((s) => (
+                      <option key={s}>{s}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-3 py-2 align-top">
+                  <select
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    value={idea.timeframe}
+                    onChange={(e) => handleUpdate(idea.id, { timeframe: e.target.value })}
+                  >
+                    {fields.timeframe?.map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-3 py-2 align-top">
+                  <select
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    value={idea.category}
+                    onChange={(e) => handleUpdate(idea.id, { category: e.target.value })}
+                  >
+                    {fields.category?.map((c) => (
+                      <option key={c}>{c}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-3 py-2 align-top">
+                  <select
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    value={idea.product}
+                    onChange={(e) => handleUpdate(idea.id, { product: e.target.value })}
+                  >
+                    {fields.product?.map((p) => (
+                      <option key={p}>{p}</option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-3 py-2 align-top">
+                  <input
+                    type="date"
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    defaultValue={idea.startDate || ""}
+                    onBlur={(e) => {
+                      if (e.target.value !== (idea.startDate || "")) {
+                        handleUpdate(idea.id, { startDate: e.target.value });
+                      }
+                    }}
+                  />
+                </td>
+                <td className="px-3 py-2 align-top">
+                  <input
+                    type="date"
+                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    defaultValue={idea.targetDate || ""}
+                    onBlur={(e) => {
+                      if (e.target.value !== (idea.targetDate || "")) {
+                        handleUpdate(idea.id, { targetDate: e.target.value });
+                      }
+                    }}
+                  />
+                </td>
+                <td className="px-3 py-2 align-top">
+                  <input
+                    className="w-40 rounded-md border border-slate-300 px-2 py-1 text-xs"
+                    defaultValue={idea.releaseNotes}
+                    placeholder="What shipped..."
+                    onBlur={(e) => {
+                      if (e.target.value !== idea.releaseNotes) {
+                        handleUpdate(idea.id, { releaseNotes: e.target.value });
+                      }
+                    }}
+                  />
+                </td>
+                <td className="px-3 py-2 align-top">
+                  <button
+                    onClick={() => handleDelete(idea.id, idea.title)}
+                    className="text-xs font-medium text-red-600 hover:text-red-800"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {ideas.map((idea) => (
-                <tr key={idea.id}>
-                  <td className="px-3 py-2 align-top">
-                    <div className="font-medium text-slate-900">{idea.title}</div>
-                    {idea.submitterName && <div className="text-xs text-slate-400">{idea.submitterName}</div>}
-                  </td>
-                  <td className="px-3 py-2 align-top">{idea.source}</td>
-                  <td className="px-3 py-2 align-top">{idea.votes}</td>
-                  <td className="px-3 py-2 align-top">
-                    <select
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                      value={idea.status}
-                      onChange={(e) => handleUpdate(idea.id, { status: e.target.value })}
-                    >
-                      {fields.status?.map((s) => (
-                        <option key={s}>{s}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <select
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                      value={idea.timeframe}
-                      onChange={(e) => handleUpdate(idea.id, { timeframe: e.target.value })}
-                    >
-                      {fields.timeframe?.map((t) => (
-                        <option key={t}>{t}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <select
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                      value={idea.category}
-                      onChange={(e) => handleUpdate(idea.id, { category: e.target.value })}
-                    >
-                      {fields.category?.map((c) => (
-                        <option key={c}>{c}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <select
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                      value={idea.product}
-                      onChange={(e) => handleUpdate(idea.id, { product: e.target.value })}
-                    >
-                      {fields.product?.map((p) => (
-                        <option key={p}>{p}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <input
-                      type="date"
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                      defaultValue={idea.startDate || ""}
-                      onBlur={(e) => {
-                        if (e.target.value !== (idea.startDate || "")) {
-                          handleUpdate(idea.id, { startDate: e.target.value });
-                        }
-                      }}
-                    />
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <input
-                      type="date"
-                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                      defaultValue={idea.targetDate || ""}
-                      onBlur={(e) => {
-                        if (e.target.value !== (idea.targetDate || "")) {
-                          handleUpdate(idea.id, { targetDate: e.target.value });
-                        }
-                      }}
-                    />
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <input
-                      className="w-40 rounded-md border border-slate-300 px-2 py-1 text-xs"
-                      defaultValue={idea.releaseNotes}
-                      placeholder="What shipped..."
-                      onBlur={(e) => {
-                        if (e.target.value !== idea.releaseNotes) {
-                          handleUpdate(idea.id, { releaseNotes: e.target.value });
-                        }
-                      }}
-                    />
-                  </td>
-                  <td className="px-3 py-2 align-top">
-                    <button
-                      onClick={() => handleDelete(idea.id, idea.title)}
-                      className="text-xs font-medium text-red-600 hover:text-red-800"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <AdminGate>
+      <AdminContent />
+    </AdminGate>
   );
 }

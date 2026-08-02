@@ -12,7 +12,7 @@ export default function Header() {
   const pathname = usePathname();
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
         <Link href="/ideas" className="text-lg font-semibold text-brand-700">
           Idea Portal
         </Link>

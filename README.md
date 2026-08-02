@@ -31,11 +31,13 @@ in Smartsheet too, and vice versa.
     example row), fill it in, and upload it to bulk-create roadmap items
     instead of adding them one at a time.
   - **Delete** any idea or roadmap item, with a confirmation prompt.
-  - **Timeline view** — a draggable, resizable Gantt chart grouped into a
-    swim-lane per Product, with checkboxes to show/hide specific products.
-    Dragging a bar reschedules it and saves automatically to Smartsheet.
-    This interactive view is admin-only by design (see Limitations) — the
-    public `/roadmap` stays a read-only quarter board.
+  - **Timeline (`/admin/timeline`)** — its own dedicated page (reachable via
+    the "Open Timeline" button in Admin) with a draggable, resizable Gantt
+    chart grouped into a swim-lane per Product. Filter by Product and/or
+    Status using the chip toggles above the chart. Dragging a bar
+    reschedules it and saves automatically to Smartsheet. This interactive
+    view is admin-only by design (see Limitations) — the public `/roadmap`
+    stays a read-only quarter board.
 
 ## The Smartsheet sheet
 
@@ -163,3 +165,6 @@ variables set.
   whenever you want a tighter, more accurate bar.
 - **Progress % on Gantt bars is derived from Status**, not tracked
   separately (New/Planned=0%, In Progress=60%, Shipped=100%, etc.).
+- **No native "Quarter" zoom level.** The Gantt library only offers
+  Month/Year granularity, not a true quarter view — Month is the default and
+  closest fit, given items are already scheduled by Release Quarter.
