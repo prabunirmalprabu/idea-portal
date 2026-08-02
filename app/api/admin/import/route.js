@@ -17,6 +17,26 @@ function pick(row, keys) {
   return "";
 }
 
+// Returns a "YYYY-MM-DD" string for Smartsheet DATE columns, or "" if the
+// cell was empty/unparseable. Handles both real Excel dates (parsed as JS
+// Date objects via cellDates: true) and plain text dates typed by hand.
+function pickDate(row, keys) {
+  for (const key of keys) {
+    const found = Object.keys(row).find((k) => normalizeHeader(k) === key);
+    if (found === undefined) continue;
+    const raw = row[found];
+    if (raw === undefined || raw === null || raw === "") continue;
+    if (raw instanceof Date && !isNaN(raw)) {
+      return raw.toISOString().slice(0, 10);
+    }
+    const parsed = new Date(raw);
+    if (!isNaN(parsed)) {
+      return parsed.toISOString().slice(0, 10);
+    }
+  }
+  return "";
+}
+
 export const runtime = "nodejs";
 
 export async function POST(request) {
@@ -31,7 +51,7 @@ export async function POST(request) {
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const workbook = XLSX.read(buffer, { type: "buffer", cellDates: true });
     const firstSheetName = workbook.SheetNames[0];
     if (!firstSheetName) {
       return NextResponse.json({ error: "The file has no sheets" }, { status: 400 });
@@ -55,6 +75,8 @@ export async function POST(request) {
         category: pick(row, ["category"]),
         product: pick(row, ["product"]),
         releaseNotes: pick(row, ["release notes", "notes"]),
+        startDate: pickDate(row, ["start date", "start"]),
+        targetDate: pickDate(row, ["target date", "end date", "target", "due date"]),
       });
     }
 

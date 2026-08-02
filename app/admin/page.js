@@ -1,5 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+
+const AdminGantt = dynamic(() => import("@/components/AdminGantt"), {
+  ssr: false,
+  loading: () => <p className="text-sm text-slate-500">Loading timeline…</p>,
+});
 
 const FIELD_LABELS = {
   status: "Status",
@@ -69,10 +75,13 @@ export default function AdminPage() {
     timeframe: "",
     product: "",
     releaseNotes: "",
+    startDate: "",
+    targetDate: "",
   });
   const [importFile, setImportFile] = useState(null);
   const [importMessage, setImportMessage] = useState("");
   const [importing, setImporting] = useState(false);
+  const [view, setView] = useState("table");
 
   async function loadAll() {
     const res = await fetch("/api/admin/ideas");
@@ -144,7 +153,17 @@ export default function AdminPage() {
         title: "",
         description: "",
         releaseNotes: "",
+        startDate: "",
+        targetDate: "",
       }));
+    }
+  }
+
+  async function handleDelete(id, title) {
+    if (!window.confirm(`Delete "${title}"? This can't be undone.`)) return;
+    const res = await fetch(`/api/admin/ideas/${id}`, { method: "DELETE" });
+    if (res.ok) {
+      setIdeas((prev) => prev.filter((i) => i.id !== id));
     }
   }
 
@@ -229,6 +248,12 @@ export default function AdminPage() {
           becomes a roadmap item.
         </p>
         <form onSubmit={handleImport} className="mt-3 flex flex-wrap items-center gap-3">
+          <a
+            href="/api/admin/import/template"
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Download template
+          </a>
           <input
             type="file"
             accept=".xlsx,.xls"
@@ -317,6 +342,26 @@ export default function AdminPage() {
             ))}
           </select>
         </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block text-xs font-medium text-slate-500">Start date (optional)</label>
+            <input
+              type="date"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={newItem.startDate || ""}
+              onChange={(e) => setNewItem({ ...newItem, startDate: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-500">Target date (optional)</label>
+            <input
+              type="date"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              value={newItem.targetDate || ""}
+              onChange={(e) => setNewItem({ ...newItem, targetDate: e.target.value })}
+            />
+          </div>
+        </div>
         <textarea
           placeholder="Release notes (shown publicly once marked Shipped)"
           rows={2}
@@ -329,90 +374,150 @@ export default function AdminPage() {
         </button>
       </form>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
-            <tr>
-              <th className="px-3 py-2">Idea</th>
-              <th className="px-3 py-2">Source</th>
-              <th className="px-3 py-2">Votes</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Release Quarter</th>
-              <th className="px-3 py-2">Category</th>
-              <th className="px-3 py-2">Product</th>
-              <th className="px-3 py-2">Release Notes</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {ideas.map((idea) => (
-              <tr key={idea.id}>
-                <td className="px-3 py-2 align-top">
-                  <div className="font-medium text-slate-900">{idea.title}</div>
-                  {idea.submitterName && <div className="text-xs text-slate-400">{idea.submitterName}</div>}
-                </td>
-                <td className="px-3 py-2 align-top">{idea.source}</td>
-                <td className="px-3 py-2 align-top">{idea.votes}</td>
-                <td className="px-3 py-2 align-top">
-                  <select
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                    value={idea.status}
-                    onChange={(e) => handleUpdate(idea.id, { status: e.target.value })}
-                  >
-                    {fields.status?.map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <select
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                    value={idea.timeframe}
-                    onChange={(e) => handleUpdate(idea.id, { timeframe: e.target.value })}
-                  >
-                    {fields.timeframe?.map((t) => (
-                      <option key={t}>{t}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <select
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                    value={idea.category}
-                    onChange={(e) => handleUpdate(idea.id, { category: e.target.value })}
-                  >
-                    {fields.category?.map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <select
-                    className="rounded-md border border-slate-300 px-2 py-1 text-xs"
-                    value={idea.product}
-                    onChange={(e) => handleUpdate(idea.id, { product: e.target.value })}
-                  >
-                    {fields.product?.map((p) => (
-                      <option key={p}>{p}</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <input
-                    className="w-48 rounded-md border border-slate-300 px-2 py-1 text-xs"
-                    defaultValue={idea.releaseNotes}
-                    placeholder="What shipped..."
-                    onBlur={(e) => {
-                      if (e.target.value !== idea.releaseNotes) {
-                        handleUpdate(idea.id, { releaseNotes: e.target.value });
-                      }
-                    }}
-                  />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex gap-2">
+        <button
+          onClick={() => setView("table")}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+            view === "table" ? "bg-slate-800 text-white" : "border border-slate-200 text-slate-600"
+          }`}
+        >
+          Table
+        </button>
+        <button
+          onClick={() => setView("timeline")}
+          className={`rounded-md px-3 py-1.5 text-sm font-medium ${
+            view === "timeline" ? "bg-slate-800 text-white" : "border border-slate-200 text-slate-600"
+          }`}
+        >
+          Timeline
+        </button>
       </div>
+
+      {view === "timeline" ? (
+        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <AdminGantt ideas={ideas} onDateChange={(id, dates) => handleUpdate(id, dates)} />
+        </div>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Idea</th>
+                <th className="px-3 py-2">Source</th>
+                <th className="px-3 py-2">Votes</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Release Quarter</th>
+                <th className="px-3 py-2">Category</th>
+                <th className="px-3 py-2">Product</th>
+                <th className="px-3 py-2">Start</th>
+                <th className="px-3 py-2">Target</th>
+                <th className="px-3 py-2">Release Notes</th>
+                <th className="px-3 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {ideas.map((idea) => (
+                <tr key={idea.id}>
+                  <td className="px-3 py-2 align-top">
+                    <div className="font-medium text-slate-900">{idea.title}</div>
+                    {idea.submitterName && <div className="text-xs text-slate-400">{idea.submitterName}</div>}
+                  </td>
+                  <td className="px-3 py-2 align-top">{idea.source}</td>
+                  <td className="px-3 py-2 align-top">{idea.votes}</td>
+                  <td className="px-3 py-2 align-top">
+                    <select
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      value={idea.status}
+                      onChange={(e) => handleUpdate(idea.id, { status: e.target.value })}
+                    >
+                      {fields.status?.map((s) => (
+                        <option key={s}>{s}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <select
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      value={idea.timeframe}
+                      onChange={(e) => handleUpdate(idea.id, { timeframe: e.target.value })}
+                    >
+                      {fields.timeframe?.map((t) => (
+                        <option key={t}>{t}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <select
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      value={idea.category}
+                      onChange={(e) => handleUpdate(idea.id, { category: e.target.value })}
+                    >
+                      {fields.category?.map((c) => (
+                        <option key={c}>{c}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <select
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      value={idea.product}
+                      onChange={(e) => handleUpdate(idea.id, { product: e.target.value })}
+                    >
+                      {fields.product?.map((p) => (
+                        <option key={p}>{p}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <input
+                      type="date"
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      defaultValue={idea.startDate || ""}
+                      onBlur={(e) => {
+                        if (e.target.value !== (idea.startDate || "")) {
+                          handleUpdate(idea.id, { startDate: e.target.value });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <input
+                      type="date"
+                      className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      defaultValue={idea.targetDate || ""}
+                      onBlur={(e) => {
+                        if (e.target.value !== (idea.targetDate || "")) {
+                          handleUpdate(idea.id, { targetDate: e.target.value });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <input
+                      className="w-40 rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      defaultValue={idea.releaseNotes}
+                      placeholder="What shipped..."
+                      onBlur={(e) => {
+                        if (e.target.value !== idea.releaseNotes) {
+                          handleUpdate(idea.id, { releaseNotes: e.target.value });
+                        }
+                      }}
+                    />
+                  </td>
+                  <td className="px-3 py-2 align-top">
+                    <button
+                      onClick={() => handleDelete(idea.id, idea.title)}
+                      className="text-xs font-medium text-red-600 hover:text-red-800"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

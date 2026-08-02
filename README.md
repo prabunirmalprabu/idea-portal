@@ -27,8 +27,15 @@ in Smartsheet too, and vice versa.
     Product values yourself, any time, without touching code. New quarters
     (e.g. "Q2 2028" once you're that far out) or new products just get typed
     in and are immediately available everywhere.
-  - **Import from Excel** — upload an .xlsx file to bulk-create roadmap items
+  - **Import from Excel** — download a template (correct headers, one
+    example row), fill it in, and upload it to bulk-create roadmap items
     instead of adding them one at a time.
+  - **Delete** any idea or roadmap item, with a confirmation prompt.
+  - **Timeline view** — a draggable, resizable Gantt chart grouped into a
+    swim-lane per Product, with checkboxes to show/hide specific products.
+    Dragging a bar reschedules it and saves automatically to Smartsheet.
+    This interactive view is admin-only by design (see Limitations) — the
+    public `/roadmap` stays a read-only quarter board.
 
 ## The Smartsheet sheet
 
@@ -147,3 +154,12 @@ variables set.
 - **The release quarter list has a fixed initial window** (through Q1 2028).
   Once you get close to running out, add more via "Manage field options" in
   `/admin` — takes a few seconds, no redeploy needed.
+- **The Gantt timeline is admin-only, on purpose.** `/roadmap` is public —
+  letting anyone drag bars around would let any visitor reschedule your
+  roadmap. The editable Gantt only lives behind the `/admin` password.
+- **Items without a Start/Target Date fall back to their whole Release
+  Quarter** as a default bar span on the timeline, so nothing you've already
+  entered disappears — set explicit dates (via the table or by dragging)
+  whenever you want a tighter, more accurate bar.
+- **Progress % on Gantt bars is derived from Status**, not tracked
+  separately (New/Planned=0%, In Progress=60%, Shipped=100%, etc.).
